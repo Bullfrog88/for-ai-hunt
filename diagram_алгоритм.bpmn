@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" id="Definitions_RegistrationProcess" targetNamespace="http://camunda.org/examples" exporter="Camunda Modeler" exporterVersion="5.41.0">
+  <bpmn:process id="UserRegistrationProcess" name="User Registration Backend Flow" isExecutable="true">
+    <bpmn:startEvent id="StartEvent_Registration" name="Request Received">
+      <bpmn:outgoing>Flow_Start_To_ValidateJson</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:serviceTask id="Task_ValidateJson" name="Validate JSON Structure" camunda:class="org.camunda.bpm.engine.impl.bpmn.behavior.ServiceTaskJavaDelegateActivityBehavior">
+      <bpmn:incoming>Flow_Start_To_ValidateJson</bpmn:incoming>
+      <bpmn:outgoing>Flow_ValidateJson_To_ValidateFields</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="Task_ValidateFields" name="Validate Fields" camunda:class="org.camunda.bpm.engine.impl.bpmn.behavior.ServiceTaskJavaDelegateActivityBehavior">
+      <bpmn:incoming>Flow_ValidateJson_To_ValidateFields</bpmn:incoming>
+      <bpmn:outgoing>Flow_ValidateFields_To_Captcha</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="Task_Captcha" name="Validate Captcha" camunda:class="org.camunda.bpm.engine.impl.bpmn.behavior.ServiceTaskJavaDelegateActivityBehavior">
+      <bpmn:incoming>Flow_ValidateFields_To_Captcha</bpmn:incoming>
+      <bpmn:outgoing>Flow_Captcha_To_UsernameCheck</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="Task_UsernameCheck" name="Check Username Uniqueness" camunda:class="org.camunda.bpm.engine.impl.bpmn.behavior.ServiceTaskJavaDelegateActivityBehavior">
+      <bpmn:incoming>Flow_Captcha_To_UsernameCheck</bpmn:incoming>
+      <bpmn:outgoing>Flow_UsernameCheck_To_HashPassword</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="Task_HashPassword" name="Hash Password" camunda:class="org.camunda.bpm.engine.impl.bpmn.behavior.ServiceTaskJavaDelegateActivityBehavior">
+      <bpmn:incoming>Flow_UsernameCheck_To_HashPassword</bpmn:incoming>
+      <bpmn:outgoing>Flow_HashPassword_To_SaveUser</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="Task_SaveUser" name="Save User in DB" camunda:class="org.camunda.bpm.engine.impl.bpmn.behavior.ServiceTaskJavaDelegateActivityBehavior">
+      <bpmn:incoming>Flow_HashPassword_To_SaveUser</bpmn:incoming>
+      <bpmn:outgoing>Flow_SaveUser_To_EndSuccess</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="EndEvent_Success" name="User Created">
+      <bpmn:incoming>Flow_SaveUser_To_EndSuccess</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:boundaryEvent id="Error_JSON" attachedToRef="Task_ValidateJson">
+      <bpmn:outgoing>Flow_ErrorJSON_To_End400</bpmn:outgoing>
+      <bpmn:errorEventDefinition errorRef="Error400" />
+    </bpmn:boundaryEvent>
+    <bpmn:boundaryEvent id="Error_Fields" attachedToRef="Task_ValidateFields">
+      <bpmn:outgoing>Flow_ErrorFields_To_End400</bpmn:outgoing>
+      <bpmn:errorEventDefinition errorRef="Error400" />
+    </bpmn:boundaryEvent>
+    <bpmn:boundaryEvent id="Error_Captcha" attachedToRef="Task_Captcha">
+      <bpmn:outgoing>Flow_ErrorCaptcha_To_End422</bpmn:outgoing>
+      <bpmn:errorEventDefinition errorRef="Error422" />
+    </bpmn:boundaryEvent>
+    <bpmn:boundaryEvent id="Error_UsernameExists" attachedToRef="Task_UsernameCheck">
+      <bpmn:outgoing>Flow_ErrorUsername_To_End409</bpmn:outgoing>
+      <bpmn:errorEventDefinition errorRef="Error409" />
+    </bpmn:boundaryEvent>
+    <bpmn:boundaryEvent id="Error_DB" attachedToRef="Task_SaveUser">
+      <bpmn:outgoing>Flow_ErrorDB_To_End500</bpmn:outgoing>
+      <bpmn:errorEventDefinition errorRef="Error500" />
+    </bpmn:boundaryEvent>
+    <bpmn:endEvent id="EndEvent_400" name="400 Bad Request">
+      <bpmn:incoming>Flow_ErrorJSON_To_End400</bpmn:incoming>
+      <bpmn:incoming>Flow_ErrorFields_To_End400</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:endEvent id="EndEvent_409" name="409 Username Exists">
+      <bpmn:incoming>Flow_ErrorUsername_To_End409</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:endEvent id="EndEvent_422" name="422 Captcha Failed">
+      <bpmn:incoming>Flow_ErrorCaptcha_To_End422</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:endEvent id="EndEvent_500" name="500 Server Error">
+      <bpmn:incoming>Flow_ErrorDB_To_End500</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_Start_To_ValidateJson" sourceRef="StartEvent_Registration" targetRef="Task_ValidateJson" />
+    <bpmn:sequenceFlow id="Flow_ValidateJson_To_ValidateFields" sourceRef="Task_ValidateJson" targetRef="Task_ValidateFields" />
+    <bpmn:sequenceFlow id="Flow_ValidateFields_To_Captcha" sourceRef="Task_ValidateFields" targetRef="Task_Captcha" />
+    <bpmn:sequenceFlow id="Flow_Captcha_To_UsernameCheck" sourceRef="Task_Captcha" targetRef="Task_UsernameCheck" />
+    <bpmn:sequenceFlow id="Flow_UsernameCheck_To_HashPassword" sourceRef="Task_UsernameCheck" targetRef="Task_HashPassword" />
+    <bpmn:sequenceFlow id="Flow_HashPassword_To_SaveUser" sourceRef="Task_HashPassword" targetRef="Task_SaveUser" />
+    <bpmn:sequenceFlow id="Flow_SaveUser_To_EndSuccess" sourceRef="Task_SaveUser" targetRef="EndEvent_Success" />
+    <bpmn:sequenceFlow id="Flow_ErrorJSON_To_End400" sourceRef="Error_JSON" targetRef="EndEvent_400" />
+    <bpmn:sequenceFlow id="Flow_ErrorFields_To_End400" sourceRef="Error_Fields" targetRef="EndEvent_400" />
+    <bpmn:sequenceFlow id="Flow_ErrorCaptcha_To_End422" sourceRef="Error_Captcha" targetRef="EndEvent_422" />
+    <bpmn:sequenceFlow id="Flow_ErrorUsername_To_End409" sourceRef="Error_UsernameExists" targetRef="EndEvent_409" />
+    <bpmn:sequenceFlow id="Flow_ErrorDB_To_End500" sourceRef="Error_DB" targetRef="EndEvent_500" />
+  </bpmn:process>
+  <bpmn:error id="Error400" name="Bad Request" errorCode="400" />
+  <bpmn:error id="Error409" name="Username Exists" errorCode="409" />
+  <bpmn:error id="Error422" name="Captcha Failed" errorCode="422" />
+  <bpmn:error id="Error500" name="Server Error" errorCode="500" />
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="UserRegistrationProcess">
+      <bpmndi:BPMNShape id="StartEvent_Registration_di" bpmnElement="StartEvent_Registration">
+        <dc:Bounds x="152" y="102" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ValidateJson_di" bpmnElement="Task_ValidateJson">
+        <dc:Bounds x="240" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ValidateFields_di" bpmnElement="Task_ValidateFields">
+        <dc:Bounds x="400" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Captcha_di" bpmnElement="Task_Captcha">
+        <dc:Bounds x="560" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_UsernameCheck_di" bpmnElement="Task_UsernameCheck">
+        <dc:Bounds x="720" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_HashPassword_di" bpmnElement="Task_HashPassword">
+        <dc:Bounds x="880" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_SaveUser_di" bpmnElement="Task_SaveUser">
+        <dc:Bounds x="1040" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_Success_di" bpmnElement="EndEvent_Success">
+        <dc:Bounds x="1202" y="102" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_400_di" bpmnElement="EndEvent_400">
+        <dc:Bounds x="392" y="250" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="367" y="286" width="86" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_422_di" bpmnElement="EndEvent_422">
+        <dc:Bounds x="642" y="250" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="629" y="286" width="63" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_409_di" bpmnElement="EndEvent_409">
+        <dc:Bounds x="802" y="250" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="784" y="286" width="73" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_500_di" bpmnElement="EndEvent_500">
+        <dc:Bounds x="1122" y="250" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1099" y="286" width="83" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Error_JSON_di" bpmnElement="Error_JSON">
+        <dc:Bounds x="322" y="142" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Error_Fields_di" bpmnElement="Error_Fields">
+        <dc:Bounds x="482" y="142" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Error_Captcha_di" bpmnElement="Error_Captcha">
+        <dc:Bounds x="642" y="142" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Error_UsernameExists_di" bpmnElement="Error_UsernameExists">
+        <dc:Bounds x="802" y="142" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Error_DB_di" bpmnElement="Error_DB">
+        <dc:Bounds x="1122" y="142" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_Start_To_ValidateJson_di" bpmnElement="Flow_Start_To_ValidateJson">
+        <di:waypoint x="188" y="120" />
+        <di:waypoint x="240" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ValidateJson_To_ValidateFields_di" bpmnElement="Flow_ValidateJson_To_ValidateFields">
+        <di:waypoint x="340" y="120" />
+        <di:waypoint x="400" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ValidateFields_To_Captcha_di" bpmnElement="Flow_ValidateFields_To_Captcha">
+        <di:waypoint x="500" y="120" />
+        <di:waypoint x="560" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Captcha_To_UsernameCheck_di" bpmnElement="Flow_Captcha_To_UsernameCheck">
+        <di:waypoint x="660" y="120" />
+        <di:waypoint x="720" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_UsernameCheck_To_HashPassword_di" bpmnElement="Flow_UsernameCheck_To_HashPassword">
+        <di:waypoint x="820" y="120" />
+        <di:waypoint x="880" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_HashPassword_To_SaveUser_di" bpmnElement="Flow_HashPassword_To_SaveUser">
+        <di:waypoint x="980" y="120" />
+        <di:waypoint x="1040" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_SaveUser_To_EndSuccess_di" bpmnElement="Flow_SaveUser_To_EndSuccess">
+        <di:waypoint x="1140" y="120" />
+        <di:waypoint x="1202" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ErrorJSON_To_End400_di" bpmnElement="Flow_ErrorJSON_To_End400">
+        <di:waypoint x="340" y="178" />
+        <di:waypoint x="340" y="268" />
+        <di:waypoint x="390" y="268" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ErrorFields_To_End400_di" bpmnElement="Flow_ErrorFields_To_End400">
+        <di:waypoint x="500" y="178" />
+        <di:waypoint x="500" y="268" />
+        <di:waypoint x="430" y="268" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ErrorCaptcha_To_End422_di" bpmnElement="Flow_ErrorCaptcha_To_End422">
+        <di:waypoint x="660" y="178" />
+        <di:waypoint x="660" y="250" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ErrorUsername_To_End409_di" bpmnElement="Flow_ErrorUsername_To_End409">
+        <di:waypoint x="820" y="178" />
+        <di:waypoint x="820" y="250" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ErrorDB_To_End500_di" bpmnElement="Flow_ErrorDB_To_End500">
+        <di:waypoint x="1140" y="178" />
+        <di:waypoint x="1140" y="250" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>
