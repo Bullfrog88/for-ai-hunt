@@ -1,0 +1,318 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" id="Definitions_Complete_ASIS" targetNamespace="http://company-x.com/equipment-issuance" exporter="Camunda Modeler" exporterVersion="5.41.0">
+  <process id="IssueITEquipmentProcess" name="Выдача ИТ‑оборудования пользователю" isExecutable="true">
+    <laneSet id="laneSet_1">
+      <lane id="lane_logistics" name="Логистика">
+        <flowNodeRef>callLogistics</flowNodeRef>
+      </lane>
+      <lane id="lane_supply" name="Отдел снабжения">
+        <flowNodeRef>checkStock</flowNodeRef>
+        <flowNodeRef>stockGateway</flowNodeRef>
+        <flowNodeRef>createPurchaseRequest</flowNodeRef>
+        <flowNodeRef>receiveEquipment</flowNodeRef>
+        <flowNodeRef>Event_00n0c1r</flowNodeRef>
+        <flowNodeRef>waitForDelivery</flowNodeRef>
+        <flowNodeRef>receiveRequestBySupply</flowNodeRef>
+      </lane>
+      <lane id="lane_firstline" name="Поддержка">
+        <flowNodeRef>registerSystem1</flowNodeRef>
+        <flowNodeRef>Activity_1aejhay</flowNodeRef>
+        <flowNodeRef>deliverToUser</flowNodeRef>
+        <flowNodeRef>closeRequests</flowNodeRef>
+        <flowNodeRef>createRequestInSystem2</flowNodeRef>
+      </lane>
+      <lane id="lane_user" name="Пользователь офиса">
+        <flowNodeRef>startEvent</flowNodeRef>
+        <flowNodeRef>requestServiceRating</flowNodeRef>
+        <flowNodeRef>endEvent</flowNodeRef>
+      </lane>
+    </laneSet>
+    <startEvent id="startEvent" name="Пользователь подал заявку">
+      <extensionElements>
+        <camunda:formData>
+          <camunda:formField id="contactMethod" label="Способ обращения" type="enum">
+            <camunda:value id="email" name="Почта" />
+            <camunda:value id="phone" name="Телефон" />
+          </camunda:formField>
+          <camunda:formField id="requestedEquipment" label="Запрашиваемое оборудование" type="string" />
+          <camunda:formField id="userName" label="ФИО пользователя" type="string" />
+          <camunda:formField id="urgency" label="Срочность" type="enum">
+            <camunda:value id="normal" name="Обычная" />
+            <camunda:value id="urgent" name="Срочная" />
+          </camunda:formField>
+        </camunda:formData>
+      </extensionElements>
+    </startEvent>
+    <userTask id="registerSystem1" name="Регистрация заявки в системе №1" camunda:candidateGroups="first_line_support">
+      <extensionElements>
+        <camunda:formData>
+          <camunda:formField id="requestNumber" label="Номер обращения" type="string" />
+          <camunda:formField id="registrationDate" label="Дата регистрации" type="string" />
+          <camunda:formField id="initialAssessment" label="Первоначальная оценка" type="string" />
+        </camunda:formData>
+      </extensionElements>
+      <outgoing>Flow_0solytv</outgoing>
+    </userTask>
+    <userTask id="createRequestInSystem2" name="Создание заявки в системе №2" camunda:candidateGroups="first_line_support">
+      <extensionElements>
+        <camunda:formData>
+          <camunda:formField id="system2RequestId" label="ID заявки в системе №2" type="string" />
+          <camunda:formField id="creationConfirmed" label="Заявка создана" type="boolean" />
+        </camunda:formData>
+      </extensionElements>
+      <incoming>Flow_1rca5ug</incoming>
+    </userTask>
+    <userTask id="receiveRequestBySupply" name="Обработка заявки отделом снабжения" camunda:candidateGroups="supply_department">
+      <extensionElements>
+        <camunda:formData>
+          <camunda:formField id="requestAccepted" label="Заявка принята" type="boolean" />
+          <camunda:formField id="supplyComments" label="Комментарии снабжения" type="string" />
+        </camunda:formData>
+      </extensionElements>
+    </userTask>
+    <serviceTask id="checkStock" name="Проверка наличия в системе №3" camunda:delegateExpression="${checkAvailabilityDelegate}" />
+    <exclusiveGateway id="stockGateway" name="Оборудование в наличии?">
+      <outgoing>Flow_04vpzvf</outgoing>
+    </exclusiveGateway>
+    <sequenceFlow id="flow_5_yes" name="Есть в наличии" sourceRef="stockGateway" targetRef="callLogistics">
+      <conditionExpression xsi:type="tFormalExpression">${equipmentAvailable == true}</conditionExpression>
+    </sequenceFlow>
+    <serviceTask id="callLogistics" name="Вызов логистики" camunda:delegateExpression="${callLogisticsDelegate}">
+      <incoming>flow_9</incoming>
+    </serviceTask>
+    <userTask id="createPurchaseRequest" name="Заявка на закупку поставщику" camunda:candidateGroups="supply_department">
+      <extensionElements>
+        <camunda:formData>
+          <camunda:formField id="supplierName" label="Поставщик" type="string" />
+          <camunda:formField id="expectedDeliveryDate" label="Ожидаемая дата поставки" type="string" />
+          <camunda:formField id="purchaseCost" label="Стоимость закупки" type="double" />
+        </camunda:formData>
+      </extensionElements>
+      <incoming>Flow_1gpr183</incoming>
+    </userTask>
+    <intermediateCatchEvent id="waitForDelivery" name="Ожидание поставки">
+      <timerEventDefinition>
+        <timeDuration>PT336H</timeDuration>
+      </timerEventDefinition>
+    </intermediateCatchEvent>
+    <userTask id="receiveEquipment" name="Приём оборудования в системе №3" camunda:candidateGroups="supply_department">
+      <extensionElements>
+        <camunda:formData>
+          <camunda:formField id="equipmentReceived" label="Оборудование получено" type="boolean" />
+          <camunda:formField id="qualityCheck" label="Результат проверки качества" type="string" />
+          <camunda:formField id="serialNumbers" label="Серийные номера" type="string" />
+        </camunda:formData>
+      </extensionElements>
+    </userTask>
+    <userTask id="deliverToUser" name="Выдача оборудования пользователю" camunda:candidateGroups="first_line_support">
+      <extensionElements>
+        <camunda:formData>
+          <camunda:formField id="equipmentIssued" label="Оборудование выдано" type="boolean" />
+          <camunda:formField id="issueDate" label="Дата выдачи" type="string" />
+          <camunda:formField id="userSignature" label="Подпись пользователя" type="string" />
+          <camunda:formField id="userConfirmation" label="Подтверждение получения" type="boolean" />
+        </camunda:formData>
+      </extensionElements>
+      <incoming>flow_6</incoming>
+    </userTask>
+    <serviceTask id="closeRequests" name="Закрытие заявок в системах №1 и №2" camunda:delegateExpression="${closeRequestsDelegate}" />
+    <userTask id="requestServiceRating" name="Оценка сервиса технической поддержки" camunda:assignee="${requestingUser}">
+      <extensionElements>
+        <camunda:formData>
+          <camunda:formField id="serviceRating" label="Оценка сервиса (1-5)" type="enum">
+            <camunda:value id="1" name="1" />
+            <camunda:value id="2" name="2" />
+            <camunda:value id="3" name="3" />
+            <camunda:value id="4" name="4" />
+            <camunda:value id="5" name="5" />
+          </camunda:formField>
+          <camunda:formField id="feedbackComments" label="Комментарии и предложения" type="string" />
+          <camunda:formField id="wouldRecommend" label="Порекомендуете ли вы наш сервис?" type="boolean" />
+        </camunda:formData>
+      </extensionElements>
+    </userTask>
+    <endEvent id="endEvent" name="Процесс завершен" />
+    <sequenceFlow id="flow_1" sourceRef="startEvent" targetRef="registerSystem1" />
+    <sequenceFlow id="flow_3" sourceRef="createRequestInSystem2" targetRef="receiveRequestBySupply" />
+    <sequenceFlow id="flow_4" sourceRef="receiveRequestBySupply" targetRef="checkStock" />
+    <sequenceFlow id="flow_5" sourceRef="checkStock" targetRef="stockGateway" />
+    <sequenceFlow id="flow_6" sourceRef="callLogistics" targetRef="deliverToUser" />
+    <sequenceFlow id="flow_7" sourceRef="createPurchaseRequest" targetRef="waitForDelivery" />
+    <sequenceFlow id="flow_8" sourceRef="waitForDelivery" targetRef="receiveEquipment" />
+    <sequenceFlow id="flow_9" sourceRef="receiveEquipment" targetRef="callLogistics" />
+    <sequenceFlow id="flow_13" sourceRef="deliverToUser" targetRef="closeRequests" />
+    <sequenceFlow id="flow_14" sourceRef="closeRequests" targetRef="requestServiceRating" />
+    <sequenceFlow id="flow_15" sourceRef="requestServiceRating" targetRef="endEvent" />
+    <sequenceFlow id="Flow_0solytv" sourceRef="registerSystem1" targetRef="Activity_1aejhay" />
+    <sequenceFlow id="Flow_1rca5ug" sourceRef="Activity_1aejhay" targetRef="createRequestInSystem2" />
+    <sequenceFlow id="Flow_1gpr183" sourceRef="Event_00n0c1r" targetRef="createPurchaseRequest" />
+    <intermediateCatchEvent id="Event_00n0c1r">
+      <incoming>Flow_04vpzvf</incoming>
+      <outgoing>Flow_1gpr183</outgoing>
+      <messageEventDefinition id="MessageEventDefinition_1ct3e45" />
+    </intermediateCatchEvent>
+    <sequenceFlow id="Flow_04vpzvf" name="Нет в наличии" sourceRef="stockGateway" targetRef="Event_00n0c1r" />
+    <userTask id="Activity_1aejhay" name="Номер обращения для отслеживания заявки">
+      <incoming>Flow_0solytv</incoming>
+      <outgoing>Flow_1rca5ug</outgoing>
+    </userTask>
+  </process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="IssueITEquipmentProcess">
+      <bpmndi:BPMNShape id="lane_user_di" bpmnElement="lane_user" isHorizontal="true">
+        <dc:Bounds x="160" y="80" width="1760" height="100" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="lane_firstline_di" bpmnElement="lane_firstline" isHorizontal="true">
+        <dc:Bounds x="160" y="180" width="1760" height="120" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="lane_supply_di" bpmnElement="lane_supply" isHorizontal="true">
+        <dc:Bounds x="160" y="300" width="1760" height="290" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="lane_logistics_di" bpmnElement="lane_logistics" isHorizontal="true">
+        <dc:Bounds x="160" y="590" width="1760" height="180" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="startEvent_di" bpmnElement="startEvent">
+        <dc:Bounds x="324" y="102" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="244" y="107.5" width="72" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="registerSystem1_di" bpmnElement="registerSystem1">
+        <dc:Bounds x="310" y="200" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="receiveRequestBySupply_di" bpmnElement="receiveRequestBySupply">
+        <dc:Bounds x="620" y="320" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="checkStock_di" bpmnElement="checkStock">
+        <dc:Bounds x="760" y="320" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="stockGateway_di" bpmnElement="stockGateway" isMarkerVisible="true">
+        <dc:Bounds x="910" y="335" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="893" y="305.5" width="84" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="callLogistics_di" bpmnElement="callLogistics">
+        <dc:Bounds x="1150" y="650" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="createPurchaseRequest_di" bpmnElement="createPurchaseRequest">
+        <dc:Bounds x="1150" y="320" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="waitForDelivery_di" bpmnElement="waitForDelivery">
+        <dc:Bounds x="1182" y="432" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1118" y="436" width="54" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="receiveEquipment_di" bpmnElement="receiveEquipment">
+        <dc:Bounds x="1150" y="500" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="deliverToUser_di" bpmnElement="deliverToUser">
+        <dc:Bounds x="1300" y="200" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="closeRequests_di" bpmnElement="closeRequests">
+        <dc:Bounds x="1460" y="200" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="requestServiceRating_di" bpmnElement="requestServiceRating">
+        <dc:Bounds x="1600" y="90" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="endEvent_di" bpmnElement="endEvent">
+        <dc:Bounds x="1782" y="102" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1834" y="107.5" width="51" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_00n0c1r_di" bpmnElement="Event_00n0c1r">
+        <dc:Bounds x="1072" y="342" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1qqjibo_di" bpmnElement="Activity_1aejhay">
+        <dc:Bounds x="450" y="200" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="createRequestInSystem2_di" bpmnElement="createRequestInSystem2">
+        <dc:Bounds x="620" y="200" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="flow_5_yes_di" bpmnElement="flow_5_yes">
+        <di:waypoint x="935" y="385" />
+        <di:waypoint x="935" y="690" />
+        <di:waypoint x="1150" y="690" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="850" y="473" width="79" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow_1_di" bpmnElement="flow_1">
+        <di:waypoint x="342" y="138" />
+        <di:waypoint x="342" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow_3_di" bpmnElement="flow_3">
+        <di:waypoint x="670" y="280" />
+        <di:waypoint x="670" y="320" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow_4_di" bpmnElement="flow_4">
+        <di:waypoint x="720" y="360" />
+        <di:waypoint x="760" y="360" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow_5_di" bpmnElement="flow_5">
+        <di:waypoint x="860" y="360" />
+        <di:waypoint x="910" y="360" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow_6_di" bpmnElement="flow_6">
+        <di:waypoint x="1250" y="690" />
+        <di:waypoint x="1360" y="690" />
+        <di:waypoint x="1360" y="280" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow_7_di" bpmnElement="flow_7">
+        <di:waypoint x="1200" y="400" />
+        <di:waypoint x="1200" y="432" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow_8_di" bpmnElement="flow_8">
+        <di:waypoint x="1200" y="468" />
+        <di:waypoint x="1200" y="500" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow_9_di" bpmnElement="flow_9">
+        <di:waypoint x="1200" y="580" />
+        <di:waypoint x="1200" y="650" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow_13_di" bpmnElement="flow_13">
+        <di:waypoint x="1400" y="240" />
+        <di:waypoint x="1460" y="240" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow_14_di" bpmnElement="flow_14">
+        <di:waypoint x="1560" y="240" />
+        <di:waypoint x="1580" y="240" />
+        <di:waypoint x="1580" y="130" />
+        <di:waypoint x="1600" y="130" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow_15_di" bpmnElement="flow_15">
+        <di:waypoint x="1700" y="116" />
+        <di:waypoint x="1782" y="116" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0solytv_di" bpmnElement="Flow_0solytv">
+        <di:waypoint x="410" y="240" />
+        <di:waypoint x="450" y="240" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1rca5ug_di" bpmnElement="Flow_1rca5ug">
+        <di:waypoint x="550" y="240" />
+        <di:waypoint x="620" y="240" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1gpr183_di" bpmnElement="Flow_1gpr183">
+        <di:waypoint x="1108" y="360" />
+        <di:waypoint x="1150" y="360" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_04vpzvf_di" bpmnElement="Flow_04vpzvf">
+        <di:waypoint x="960" y="360" />
+        <di:waypoint x="1072" y="360" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="979" y="342" width="74" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</definitions>
