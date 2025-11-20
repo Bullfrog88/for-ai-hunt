@@ -1,0 +1,303 @@
+openapi: 3.0.0
+info:
+  title: User Registration API
+  description: API for user registration process
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@example.com
+
+servers:
+  - url: https://api.example.com/v1
+    description: Production server
+  - url: https://staging-api.example.com/v1
+    description: Staging server
+
+paths:
+  /auth/register:
+    post:
+      summary: Register a new user
+      description: |
+        Creates a new user account after validating all required fields,
+        captcha verification, and username uniqueness check.
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegistrationRequest'
+            examples:
+              validRequest:
+                summary: Valid registration request
+                value:
+                  firstName: "John"
+                  lastName: "Doe"
+                  userName: "johndoe2024"
+                  email: "john.doe@example.com"
+                  password: "SecurePass123!"
+                  captchaToken: "03AOLTBLR5UtIoenazhjja8..."
+              minimalRequest:
+                summary: Minimal registration request
+                value:
+                  firstName: "John"
+                  lastName: "Doe"
+                  userName: "johndoe"
+                  password: "SecurePass123!"
+                  captchaToken: "03AOLTBLR5UtIoenazhjja8..."
+
+      responses:
+        '201':
+          description: User successfully registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegistrationSuccessResponse'
+              examples:
+                successResponse:
+                  summary: Successful registration response
+                  value:
+                    userId: "550e8400-e29b-41d4-a716-446655440000"
+                    userName: "johndoe2024"
+                    email: "john.doe@example.com"
+                    createdAt: "2024-01-15T10:30:00Z"
+                    status: "ACTIVE"
+                    message: "User registered successfully"
+
+        '400':
+          description: |
+            Bad Request - Validation error in input data.
+            Possible reasons:
+            - Missing required fields
+            - Invalid field formats
+            - Password doesn't meet requirements
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                validationError:
+                  summary: Validation error example
+                  value:
+                    errorCode: "VALIDATION_ERROR"
+                    message: "Request contains invalid fields"
+                    details:
+                      violations:
+                        - field: "password"
+                          message: "Password must contain at least one uppercase letter, one lowercase letter, one digit, and one special character"
+                        - field: "userName"
+                          message: "Username must be between 3 and 30 characters"
+
+        '409':
+          description: |
+            Conflict - Username or email already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                usernameExists:
+                  summary: Username conflict example
+                  value:
+                    errorCode: "USERNAME_EXISTS"
+                    message: "The provided username is already registered"
+                    details:
+                      field: "userName"
+                      suggestion: "johndoe20241"
+
+        '422':
+          description: |
+            Unprocessable Entity - CAPTCHA validation failed or expired
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                captchaFailed:
+                  summary: CAPTCHA failure example
+                  value:
+                    errorCode: "INVALID_CAPTCHA"
+                    message: "CAPTCHA verification failed"
+
+        '429':
+          description: |
+            Too Many Requests - Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                rateLimit:
+                  summary: Rate limit example
+                  value:
+                    errorCode: "RATE_LIMIT_EXCEEDED"
+                    message: "Too many registration attempts. Please try again in 15 minutes."
+
+        '500':
+          description: |
+            Internal Server Error - Unexpected server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                serverError:
+                  summary: Server error example
+                  value:
+                    errorCode: "INTERNAL_ERROR"
+                    message: "An unexpected error occurred on the server"
+
+        '503':
+          description: |
+            Service Unavailable - External service (CAPTCHA) unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                serviceUnavailable:
+                  summary: Service unavailable example
+                  value:
+                    errorCode: "SERVICE_UNAVAILABLE"
+                    message: "CAPTCHA service is temporarily unavailable"
+
+components:
+  schemas:
+    RegistrationRequest:
+      type: object
+      required:
+        - firstName
+        - lastName
+        - userName
+        - password
+        - captchaToken
+      properties:
+        firstName:
+          type: string
+          minLength: 1
+          maxLength: 50
+          description: User's first name
+          example: "John"
+          pattern: "^[a-zA-Zа-яА-ЯёЁ\\s\\-']+$"
+        lastName:
+          type: string
+          minLength: 1
+          maxLength: 50
+          description: User's last name
+          example: "Doe"
+          pattern: "^[a-zA-Zа-яА-ЯёЁ\\s\\-']+$"
+        userName:
+          type: string
+          minLength: 3
+          maxLength: 30
+          description: Unique username (alphanumeric and underscore only)
+          example: "johndoe2024"
+          pattern: "^[a-zA-Z0-9_]+$"
+        email:
+          type: string
+          format: email
+          maxLength: 255
+          description: User's email address (optional)
+          example: "john.doe@example.com"
+        password:
+          type: string
+          minLength: 8
+          maxLength: 32
+          description: |
+            Password must be 8-32 characters, containing at least:
+            - One uppercase letter
+            - One lowercase letter  
+            - One digit
+            - One special character
+          example: "SecurePass123!"
+          pattern: "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,32}$"
+        captchaToken:
+          type: string
+          description: Token obtained from frontend CAPTCHA service
+          example: "03AOLTBLR5UtIoenazhjja8..."
+
+    RegistrationSuccessResponse:
+      type: object
+      properties:
+        userId:
+          type: string
+          format: uuid
+          description: Unique identifier for the newly created user
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        userName:
+          type: string
+          description: The registered username
+          example: "johndoe2024"
+        email:
+          type: string
+          format: email
+          description: The registered email (if provided)
+          example: "john.doe@example.com"
+        createdAt:
+          type: string
+          format: date-time
+          description: Timestamp of user registration
+          example: "2024-01-15T10:30:00Z"
+        status:
+          type: string
+          enum: [ACTIVE, PENDING_VERIFICATION]
+          description: User account status
+          example: "ACTIVE"
+        message:
+          type: string
+          description: Human-readable success message
+          example: "User registered successfully"
+
+    ErrorResponse:
+      type: object
+      required:
+        - errorCode
+        - message
+      properties:
+        errorCode:
+          type: string
+          description: Machine-readable error code
+          example: "VALIDATION_ERROR"
+        message:
+          type: string
+          description: Human-readable error message
+          example: "Request contains invalid fields"
+        details:
+          type: object
+          nullable: true
+          description: Additional error details
+          properties:
+            violations:
+              type: array
+              description: List of field validation errors
+              items:
+                type: object
+                properties:
+                  field:
+                    type: string
+                    description: Name of the invalid field
+                  message:
+                    type: string
+                    description: Description of the validation error
+            field:
+              type: string
+              description: Specific field that caused the error
+            suggestion:
+              type: string
+              description: Suggested alternative value
+        timestamp:
+          type: string
+          format: date-time
+          description: When the error occurred
+          example: "2024-01-15T10:30:00Z"
+        requestId:
+          type: string
+          description: Unique identifier for the request
+          example: "req_123456789"
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
